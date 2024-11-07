@@ -103,4 +103,37 @@ def mandelbrotArea(iterations: int, samples: int, power=2, bound=2, scatter=Fals
     else:
         return area
 
+
+def iterate_iterSamples_Error(iters: np.ndarray[int], samples: np.ndarray[int]):
+    """
+    errorI_out = np.zeros((samples.size, iters.size))
+
+    for row, nSamples in enumerate(samples):
+        area_iMax = mandelbrotArea(iters[-1], nSamples)
+        for col, nIter in enumerate(iters):
+            area = mandelbrotArea(nIter, nSamples)
+            error = area_iMax - area
+            errorI_out[row, col] = error
+
+    return errorI_out
+    """
+    areas = iterate_iterSamples(iters, samples)
+    maxAll = areas[-1, -1]
+
+    return abs(maxAll - areas)
+
+    
+    
+
+def iterate_iterSamples(iters: np.ndarray[int], samples: np.ndarray[int]):
+
+    out = np.zeros((samples.size, iters.size))
+
+    for row, nSamples in enumerate(samples):
+        for col, nIter in enumerate(iters):
+            area = mandelbrotArea(nIter, nSamples)
+            out[row, col] = area
+
+    return out
+
 instantiateRNG()

@@ -52,4 +52,7 @@ plt.xlabel("Number of iterations j")
 plt.ylabel(rf"$A_{{(j,{n})}} - A_{{({max_iterations},{n})}}$")
 plt.show()
 
+plot_mandelbrot(xDomain, yDomain, iterationArray)
+plt.show()
+
 print('Approximate area of the Mandelbrot set for', n, 'points and', max_iterations, 'iterations:', area)
