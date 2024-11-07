@@ -2,6 +2,7 @@ import numpy as np
 from numpy import ndarray
 
 from typing import List, Tuple, Dict
+from scipy.stats.qmc import LatinHypercube
 
 XMIN, XMAX = -2, 1.5
 YMIN, YMAX = -2, 2
@@ -34,14 +35,15 @@ def mandelbrotIter(val: np.complexfloating, nIter: int, power=2, bound=2):
 
 
 def mandelbrotDomain(xDomain: ndarray[float], yDomain: ndarray[float], nIter: int, power=2, bound=2, 
-                     graphicsBuffer: ndarray = None):
+                    graphicsBuffer: ndarray = None):
     """
     Performs the mandelbrot iteration scheme over the x and y domain and returns the array containing
     the iterations required to surpass the boundary conditions or 0 if the point lies in the mandelbrot set.
 
     Args:
-        xDomain: linspace of values in the x Domain
+        xDomain: linspace of values in the x domain
         yDomain: linspace of values in the y domain
+        sampling: sampling technique to generate the domain
         nIter:   Amount of mandelbrot iterations for every value of x+iy
         power:   exponent for mandelbrot iteration (=2)
         bound:   mandelbrot boundary condition (=2)
@@ -66,7 +68,7 @@ def mandelbrotDomain(xDomain: ndarray[float], yDomain: ndarray[float], nIter: in
     return graphicsBuffer
 
 
-def mandelbrotArea(iterations: int, samples: int, power=2, bound=2, scatter=False):
+def mandelbrotArea(iterations: int, samples: int, sampling: str = 'random', power=2, bound=2, scatter=False):
     """
     Implementation of the Monte Carlo integration method for the Mandelbrot set with x boundaries [-2, 1.5] 
     and y boundarys [-2, 2]. Can record a scatter
@@ -75,6 +77,7 @@ def mandelbrotArea(iterations: int, samples: int, power=2, bound=2, scatter=Fals
     Args:
         iterations: Amount of mandelbrot iterations for every value of x+iy
         samples:    Amount of random points to be sampled within the domain
+        sampling:   Sampling technique used to generate the domain. Accepts 'random', 'hypercube' and 'orthogonal'
         power:      exponent for mandelbrot iteration (=2)
         bound:      mandelbrot boundary condition (=2)
         scatter:    If true, Return value will be a tuple of the measured area and a list of points
@@ -90,8 +93,13 @@ def mandelbrotArea(iterations: int, samples: int, power=2, bound=2, scatter=Fals
     scatterPoints = []
 
     for sample in range(samples):
-        x = generator.uniform(XMIN, XMAX)
-        y = generator.uniform(YMIN, YMAX)
+        if sampling == 'hypercube':
+            LatinHypercube(2)
+        elif sampling == 'orthogonal':
+            LatinHypercube(2, strength = 2)
+        else:
+            x = generator.uniform(XMIN, XMAX)
+            y = generator.uniform(YMIN, YMAX)
         sampledVal = complex(x, y)
         if not mandelbrotIter(sampledVal, iterations, power, bound):
             hits += 1
@@ -104,7 +112,7 @@ def mandelbrotArea(iterations: int, samples: int, power=2, bound=2, scatter=Fals
         return area
 
 
-def iterate_iterSamples_Error(iters: np.ndarray[int], samples: np.ndarray[int]):
+def iterate_iterSamples_Error(iters: np.ndarray[int], samples: np.ndarray[int], sampling:str = 'random'):
     """
     errorI_out = np.zeros((samples.size, iters.size))
 
@@ -117,21 +125,19 @@ def iterate_iterSamples_Error(iters: np.ndarray[int], samples: np.ndarray[int]):
 
     return errorI_out
     """
-    areas = iterate_iterSamples(iters, samples)
+    areas = iterate_iterSamples(iters, samples, sampling = sampling)
     maxAll = areas[-1, -1]
 
     return abs(maxAll - areas)
 
-    
-    
 
-def iterate_iterSamples(iters: np.ndarray[int], samples: np.ndarray[int]):
+def iterate_iterSamples(iters: np.ndarray[int], samples: np.ndarray[int], sampling: str = 'random'):
 
     out = np.zeros((samples.size, iters.size))
 
     for row, nSamples in enumerate(samples):
         for col, nIter in enumerate(iters):
-            area = mandelbrotArea(nIter, nSamples)
+            area = mandelbrotArea(nIter, nSamples, sampling = sampling)
             out[row, col] = area
 
     return out
