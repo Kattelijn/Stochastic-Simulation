@@ -1,13 +1,14 @@
 import numpy as np
 from numpy import ndarray
 from scipy.stats.qmc import LatinHypercube
+from time import time
 
 from mandelbrot_MC import mandelbrotIter
 
 from typing import List, Tuple, Dict, Union
 
 class BaseSolver:
-    XMIN, XMAX = -2, 1.5
+    XMIN, XMAX = -2.25, 1.75
     YMIN, YMAX = -2, 2
 
     def __init__(self, seed: int=None) -> None:
@@ -65,7 +66,7 @@ class BaseSolver:
         else:
             return area
 
-    def iterate_iterSamples(self, iters: np.ndarray[int], samples: np.ndarray[int]) -> np.ndarray[float, float]:
+    def iterate_iterSamples(self, iters: np.ndarray[int], samples: np.ndarray[int], verbose=False) -> np.ndarray[float, float]:
         """
         Returns Array of estimated areas for different amounts of iterations and samples.
 
@@ -75,17 +76,23 @@ class BaseSolver:
         Args:
             iters:   Array containing all integer amounts of iterations to be tested
             samples: Array containing all integer amounts of samples to be tested
+            verbose: If True, function will print the current value nSamples and the time for every outer loop
         """
         out = np.zeros((samples.size, iters.size))
 
         for row, nSamples in enumerate(samples):
-            for col, nIter in enumerate(iters):
-                area = self.mandelbrotArea(nIter, nSamples,)
-                out[row, col] = area
+            if verbose: print(f"nSamples: {nSamples}")
 
+            tStartSample = time()
+            for col, nIter in enumerate(iters):
+                area = self.mandelbrotArea(nIter, nSamples)
+                out[row, col] = area
+            
+            if verbose: print(f"t_nSamples: {time() - tStartSample:.2f}")
+        
         return out
     
-    def iterate_iterSamples_Error(self, iters: np.ndarray[int], samples: np.ndarray[int], sampling:str = 'random'):
+    def iterate_iterSamples_Error(self, iters: np.ndarray[int], samples: np.ndarray[int]):
         """
         errorI_out = np.zeros((samples.size, iters.size))
 
@@ -102,6 +109,38 @@ class BaseSolver:
         maxAll = areas[-1, -1]
 
         return abs(maxAll - areas)
+
+    def iterSample_std(self, runs: int, iters: np.ndarray[int], samples: np.ndarray[int], trueValParms = (10000, 10000),
+                       trueArea: float=None, verbose=False):
+        """
+        Calculates the sample standard deviations for estimated area for different mandelbrot iteration depths 
+        and sampling points taken.
+
+        Args:
+            runs:         Amount of runs to take sample STD for
+            iters:        Array containing all integer amounts of iterations to be tested
+            samples:      Array containing all integer amounts of samples to be tested
+            trueValParms: Iterations and Samples parameters to estimate the true value from, is ignored if the true area is given
+            trueArea:     TrueArea to estimate standard error from, is ignored if None.
+        """
+        results = np.zeros((samples.size, iters.size, runs), float)
+
+        if trueArea is None:
+            trueArea = self.mandelbrotArea(*trueValParms)
+
+        for run in range(runs):
+            tRunStart = time()
+            if verbose: print(f"Run {run}")
+
+            resultRun = self.iterate_iterSamples(iters, samples)
+            results[:,:,run] = resultRun
+
+            if verbose: print(f"t_nSamples: {time() - tRunStart:.2f}")
+            
+        
+        stds = np.std(results, axis=2, mean=trueArea, ddof=1) # ddof = 1 for unbiased sample standard deviation 
+
+        return stds, trueArea
 
 
 class PureRandomSampling(BaseSolver):
@@ -132,7 +171,7 @@ class LatinHypercubeSampling(BaseSolver):
         return samples
 
 
-class OrthogonalSampling(LatinHypercube):
+class OrthogonalSampling(LatinHypercubeSampling):
     """
     Implementation of the Monte Carlo integration scheme for the Mandelbrot utilizing pure random sampling.
 
