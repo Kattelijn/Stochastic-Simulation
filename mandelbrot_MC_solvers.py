@@ -16,15 +16,15 @@ class BaseSolver:
     
     def instantiateRNG(self, seed: int) -> None:
         """
-        Set seef for RNG of solver
+        Set seed for RNG of solver. To be implemented by specific solver.
         """
-        pass
+        raise(NotImplementedError)
 
     def samples(self, nSamples: int) -> np.ndarray[float, float]:
         """
-        Returns [Nx2] 2D-array of all sampled points (x, y).
+        Returns [Nx2] 2D-array of all sampled points (x, y). To be implemented by specific solver.
         """
-        pass
+        raise(NotImplementedError)
     
     def mandelbrotArea(self, iterations: int, samples: int, power=2, bound=2, scatter=False
                        ) -> Union[float, Tuple[float, List[Tuple[float, float]]]]:
