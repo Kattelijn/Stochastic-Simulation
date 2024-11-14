@@ -2,6 +2,7 @@ import numpy as np
 from numpy import ndarray
 from scipy.stats.qmc import LatinHypercube
 from time import time
+import concurrent.futures
 
 from mandelbrot_MC import mandelbrotIter
 
@@ -66,7 +67,24 @@ class BaseSolver:
         else:
             return area
 
-    def iterate_iterSamples(self, iters: np.ndarray[int], samples: np.ndarray[int], verbose=False) -> np.ndarray[float, float]:
+    def parallelMandelbrotArea(self, iterations: int, samples: int):
+        domainArea = (self.YMAX - self.YMIN) * (self.XMAX - self.XMIN)
+
+        hits = 0
+        samplepoints = self.samples(samples)
+        samplepoints = [complex(samplepoints[i, 0], samplepoints[i,1]) for i in range(samples)]
+
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [executor.submit(mandelbrotIter, point, iterations) for point in samplepoints]
+
+            for future in concurrent.futures.as_completed(futures):
+                if not future.result():
+                    hits += 1
+        
+        area = (hits / samples) * domainArea
+        return area
+
+    def iterate_iterSamples(self, iters: np.ndarray[int], samples: np.ndarray[int], verbose=False, parallel=False) -> np.ndarray[float, float]:
         """
         Returns Array of estimated areas for different amounts of iterations and samples.
 
@@ -85,11 +103,12 @@ class BaseSolver:
 
             tStartSample = time()
             for col, nIter in enumerate(iters):
-                area = self.mandelbrotArea(nIter, nSamples)
+                area = None
+                if parallel: area = self.parallelMandelbrotArea(nIter, nSamples)
+                else: area = self.mandelbrotArea(nIter, nSamples)
                 out[row, col] = area
             
             if verbose: print(f"t_nSamples: {time() - tStartSample:.2f}")
-        
         return out
     
     def iterate_iterSamples_Error(self, iters: np.ndarray[int], samples: np.ndarray[int]):
@@ -102,7 +121,7 @@ class BaseSolver:
         return abs(maxAll - areas)
 
     def iterSample_std(self, runs: int, iters: np.ndarray[int], samples: np.ndarray[int], trueValParms = (10000, 10000),
-                       trueArea: float=None, multiplier=1, verbose=False) -> Tuple[ndarray[float, float], ndarray[float, float], float]:
+                       trueArea: float=None, multiplier=1, verbose=False, parallel = False) -> Tuple[ndarray[float, float], ndarray[float, float], float]:
         """
         Calculates the sample standard deviations for estimated area for different mandelbrot iteration depths 
         and sampling points taken.
@@ -129,7 +148,7 @@ class BaseSolver:
             tRunStart = time()
             if verbose: print(f"Run {run+1}")
 
-            resultRun = self.iterate_iterSamples(iters, samples)
+            resultRun = self.iterate_iterSamples(iters, samples, parallel=parallel)
             results[:,:,run] = resultRun * multiplier
 
             if verbose: print(f"tRun: {time() - tRunStart:.2f}")
