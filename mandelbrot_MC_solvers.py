@@ -8,12 +8,12 @@ from mandelbrot_MC import mandelbrotIter
 from typing import List, Tuple, Dict, Union
 
 class BaseSolver:
-    XMIN, XMAX = -2.25, 1.75
-    YMIN, YMAX = -2, 2
-
-    def __init__(self, seed: int=None) -> None:
+    def __init__(self, seed: int=None, xDomain=(-2, 2), yDomain=(-2, 2)) -> None:
         self.instantiateRNG(seed)
-    
+
+        self.XMIN, self.XMAX = xDomain
+        self.YMIN, self.YMAX = yDomain
+
     def instantiateRNG(self, seed: int) -> None:
         """
         Set seed for RNG of solver. To be implemented by specific solver.
@@ -94,16 +94,7 @@ class BaseSolver:
     
     def iterate_iterSamples_Error(self, iters: np.ndarray[int], samples: np.ndarray[int]):
         """
-        errorI_out = np.zeros((samples.size, iters.size))
-
-        for row, nSamples in enumerate(samples):
-            area_iMax = mandelbrotArea(iters[-1], nSamples)
-            for col, nIter in enumerate(iters):
-                area = mandelbrotArea(nIter, nSamples)
-                error = area_iMax - area
-                errorI_out[row, col] = error
-
-        return errorI_out
+        
         """
         areas = self.iterate_iterSamples(iters, samples)
         maxAll = areas[-1, -1]
@@ -111,7 +102,7 @@ class BaseSolver:
         return abs(maxAll - areas)
 
     def iterSample_std(self, runs: int, iters: np.ndarray[int], samples: np.ndarray[int], trueValParms = (10000, 10000),
-                       trueArea: float=None, verbose=False):
+                       trueArea: float=None, multiplier=1, verbose=False) -> Tuple[ndarray[float, float], ndarray[float, float], float]:
         """
         Calculates the sample standard deviations for estimated area for different mandelbrot iteration depths 
         and sampling points taken.
@@ -122,25 +113,31 @@ class BaseSolver:
             samples:      Array containing all integer amounts of samples to be tested
             trueValParms: Iterations and Samples parameters to estimate the true value from, is ignored if the true area is given
             trueArea:     TrueArea to estimate standard error from, is ignored if None.
+        
+        Returns: A tuple containing an array of the standard errors w.r.t. the "estimated true value",
+            an array of the areas for all runs, and the  "estimated true value".
+            
+            Along rows, amount of samples remain constant with varying iterations
+            Along collumns, amount of iterations remain constant, with variyng amounts of samples 
         """
         results = np.zeros((samples.size, iters.size, runs), float)
 
         if trueArea is None:
-            trueArea = self.mandelbrotArea(*trueValParms)
+            trueArea = self.mandelbrotArea(*trueValParms) * multiplier
 
         for run in range(runs):
             tRunStart = time()
-            if verbose: print(f"Run {run}")
+            if verbose: print(f"Run {run+1}")
 
             resultRun = self.iterate_iterSamples(iters, samples)
-            results[:,:,run] = resultRun
+            results[:,:,run] = resultRun * multiplier
 
-            if verbose: print(f"t_nSamples: {time() - tRunStart:.2f}")
+            if verbose: print(f"tRun: {time() - tRunStart:.2f}")
             
         
         stds = np.std(results, axis=2, mean=trueArea, ddof=1) # ddof = 1 for unbiased sample standard deviation 
 
-        return stds, trueArea
+        return stds, results, trueArea
 
 
 class PureRandomSampling(BaseSolver):
