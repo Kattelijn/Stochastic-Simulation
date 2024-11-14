@@ -1,19 +1,9 @@
 import numpy as np
 from numpy import ndarray
+from math import isqrt
 
 from typing import List, Tuple, Dict
 from scipy.stats.qmc import LatinHypercube
-
-XMIN, XMAX = -2, 1.5
-YMIN, YMAX = -2, 2
-
-generator: np.random.Generator = None
-
-
-def instantiateRNG(seed = None):
-    global generator
-    generator = np.random.default_rng(seed)
-
 
 def mandelbrotIter(val: np.complexfloating, nIter: int, power=2, bound=2):
     """
@@ -67,79 +57,29 @@ def mandelbrotDomain(xDomain: ndarray[float], yDomain: ndarray[float], nIter: in
 
     return graphicsBuffer
 
-
-def mandelbrotArea(iterations: int, samples: int, sampling: str = 'random', power=2, bound=2, scatter=False):
+def prime_sieve(n: int):
     """
-    Implementation of the Monte Carlo integration method for the Mandelbrot set with x boundaries [-2, 1.5] 
-    and y boundarys [-2, 2]. Can record a scatter
-    plot for all samples that were recorded to be in the mandelbrot set
-
-    Args:
-        iterations: Amount of mandelbrot iterations for every value of x+iy
-        samples:    Amount of random points to be sampled within the domain
-        sampling:   Sampling technique used to generate the domain. Accepts 'random', 'hypercube' and 'orthogonal'
-        power:      exponent for mandelbrot iteration (=2)
-        bound:      mandelbrot boundary condition (=2)
-        scatter:    If true, Return value will be a tuple of the measured area and a list of points
-                    for all samples taken in the mandelbrot set.
-                    If false, return value will only be the measured area
+    Perform the sieve of Eratosthenes up to a given bound n.
+    Returns a list of primes and the number of cross-out operations performed.
+    """
+    # Initialize list of numbers from 2 to n
+    numbers = list(range(2, n + 1))
     
-    Returns: The measured mandelbrot area if scatter is False. Else a tuple of recorded area and a list
-             of points xy that were recorded to be in the mandelbrot set.
-    """
-    domainArea = (YMAX - YMIN) * (XMAX - XMIN)
-
-    hits = 0
-    scatterPoints = []
-
-    for sample in range(samples):
-        if sampling == 'hypercube':
-            LatinHypercube(2)
-        elif sampling == 'orthogonal':
-            LatinHypercube(2, strength = 2)
-        else:
-            x = generator.uniform(XMIN, XMAX)
-            y = generator.uniform(YMIN, YMAX)
-        sampledVal = complex(x, y)
-        if not mandelbrotIter(sampledVal, iterations, power, bound):
-            hits += 1
-            if scatter: scatterPoints.append((x, y))
-
-    area = (hits / samples) * domainArea
-    if scatter:
-        return area, scatterPoints
-    else:
-        return area
-
-
-def iterate_iterSamples_Error(iters: np.ndarray[int], samples: np.ndarray[int], sampling:str = 'random'):
-    """
-    errorI_out = np.zeros((samples.size, iters.size))
-
-    for row, nSamples in enumerate(samples):
-        area_iMax = mandelbrotArea(iters[-1], nSamples)
-        for col, nIter in enumerate(iters):
-            area = mandelbrotArea(nIter, nSamples)
-            error = area_iMax - area
-            errorI_out[row, col] = error
-
-    return errorI_out
-    """
-    areas = iterate_iterSamples(iters, samples, sampling = sampling)
-    maxAll = areas[-1, -1]
-
-    return abs(maxAll - areas)
-
-
-def iterate_iterSamples(iters: np.ndarray[int], samples: np.ndarray[int], sampling: str = 'random'):
-
-    out = np.zeros((samples.size, iters.size))
-
-    for row, nSamples in enumerate(samples):
-        for col, nIter in enumerate(iters):
-            area = mandelbrotArea(nIter, nSamples, sampling = sampling)
-            out[row, col] = area
-
-    return out
-
-instantiateRNG()
+    cross_outs = 0  # To count cross-out operations
+    j = 0  # Start index for sieve
+    
+    # Apply sieve
+    while numbers[j] <= isqrt(n):
+        for i in range(j + numbers[j], len(numbers), numbers[j]):
+            if numbers[i] != 0:
+                numbers[i] = 0  # Mark as non-prime
+                cross_outs += 1
+        
+        # Move j to the next non-zero (prime) element
+        j += 1
+        while j < len(numbers) and numbers[j] == 0:
+            j += 1
+    
+    # Collect only the primes (non-zero values)
+    primes = [num for num in numbers if num != 0]
+    return primes
