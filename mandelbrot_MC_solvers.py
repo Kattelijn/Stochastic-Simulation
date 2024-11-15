@@ -8,6 +8,8 @@ from mandelbrot_MC import mandelbrotIter
 
 from typing import List, Tuple, Dict, Union
 
+HEUR_ITER, HEUR_SAMPLE = 2612, 11881
+
 class BaseSolver:
     def __init__(self, seed: int=None, xDomain=(-2, 2), yDomain=(-2, 2)) -> None:
         self.instantiateRNG(seed)
@@ -18,6 +20,12 @@ class BaseSolver:
     def instantiateRNG(self, seed: int) -> None:
         """
         Set seed for RNG of solver. To be implemented by specific solver.
+        """
+        raise(NotImplementedError)
+    
+    def get_state(self) -> int:
+        """
+        Get current state of the RNG. To be implemented by specific solver
         """
         raise(NotImplementedError)
 
@@ -104,8 +112,10 @@ class BaseSolver:
             tStartSample = time()
             for col, nIter in enumerate(iters):
                 area = None
-                if parallel: area = self.parallelMandelbrotArea(nIter, nSamples)
-                else: area = self.mandelbrotArea(nIter, nSamples)
+                if parallel and HEUR_ITER <= nIter and HEUR_SAMPLE <= nSamples: # Parallel calculation only has positive effect for high nIter & nSamples
+                    area = self.parallelMandelbrotArea(nIter, nSamples)
+                else: 
+                    area = self.mandelbrotArea(nIter, nSamples)
                 out[row, col] = area
             
             if verbose: print(f"t_nSamples: {time() - tStartSample:.2f}")
@@ -166,6 +176,9 @@ class PureRandomSampling(BaseSolver):
     def instantiateRNG(self, seed: int) -> None:
         self.RNG = np.random.default_rng(seed)
     
+    def get_state(self) -> int:
+        return self.RNG.bit_generator.state["state"]["state"]
+    
     def samples(self, nSamples: int) -> ndarray[float, float]:
         return self.RNG.uniform((self.XMIN, self.YMIN), (self.XMAX, self.YMAX), (nSamples, 2))
 
@@ -176,6 +189,9 @@ class LatinHypercubeSampling(BaseSolver):
     """
     def instantiateRNG(self, seed: int) -> None:
         self.RNG = LatinHypercube(2, strength=1, seed=seed)
+
+    def get_state(self) -> int:
+        return self.RNG.rng.bit_generator.state["state"]["state"]
     
     def samples(self, nSamples: int) -> ndarray[float, float]:
         xDiff = self.XMAX - self.XMIN
