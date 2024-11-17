@@ -120,15 +120,6 @@ class BaseSolver:
             
             if verbose: print(f"t_nSamples: {time() - tStartSample:.2f}")
         return out
-    
-    def iterate_iterSamples_Error(self, iters: np.ndarray[int], samples: np.ndarray[int]):
-        """
-        
-        """
-        areas = self.iterate_iterSamples(iters, samples)
-        maxAll = areas[-1, -1]
-
-        return abs(maxAll - areas)
 
     def iterSample_std(self, runs: int, iters: np.ndarray[int], samples: np.ndarray[int], trueValParms = (10000, 10000),
                        trueArea: float=None, multiplier=1, verbose=False, parallel = False) -> Tuple[ndarray[float, float], ndarray[float, float], float]:
