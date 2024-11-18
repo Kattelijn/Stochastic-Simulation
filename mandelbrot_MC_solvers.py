@@ -38,9 +38,8 @@ class BaseSolver:
     def mandelbrotArea(self, iterations: int, samples: int, power=2, bound=2, scatter=False
                        ) -> Union[float, Tuple[float, List[Tuple[float, float]]]]:
         """
-        Implementation of the Monte Carlo integration method for the Mandelbrot set with x boundaries [-2, 1.5] 
-        and y boundarys [-2, 2]. Can record a scatter
-        plot for all samples that were recorded to be in the mandelbrot set
+        Implementation of the Monte Carlo integration method for the. 
+        Can record a scatter plot for all samples that were recorded to be in the mandelbrot set
 
         Args:
             iterations: Amount of mandelbrot iterations for every value of x+iy
@@ -76,6 +75,17 @@ class BaseSolver:
             return area
 
     def parallelMandelbrotArea(self, iterations: int, samples: int):
+        """
+        Paralellized implementation of the Monte Carlo integration method for the Mandelbrot set. 
+        Uses `mandelbrot_MC.mandelbrotIter()` with default settings as base function.
+
+        Args:
+            iterations: Amount of mandelbrot iterations for every value of x+iy
+            samples:    Amount of random points to be sampled within the domain
+        
+        Returns: The measured mandelbrot area if scatter is False. Else a tuple of recorded area and a list
+                of points xy that were recorded to be in the mandelbrot set.
+        """
         domainArea = (self.YMAX - self.YMIN) * (self.XMAX - self.XMIN)
 
         hits = 0
@@ -100,9 +110,11 @@ class BaseSolver:
         Along collumns, amount of iterations remain constant, with variyng amounts of samples 
         
         Args:
-            iters:   Array containing all integer amounts of iterations to be tested
-            samples: Array containing all integer amounts of samples to be tested
-            verbose: If True, function will print the current value nSamples and the time for every outer loop
+            iters:    Array containing all integer amounts of iterations to be tested
+            samples:  Array containing all integer amounts of samples to be tested
+            verbose:  If True, function will print the current value nSamples and the time for every outer loop
+            parallel: Wether or not to use the paralellized implementation when this would lead to guaranteed 
+                      performance increase
         """
         out = np.zeros((samples.size, iters.size))
 
@@ -128,13 +140,15 @@ class BaseSolver:
         and sampling points taken.
 
         Args:
-            runs:         Amount of runs to take sample STD for
+            runs:         Amount of runs to take population STD for
             iters:        Array containing all integer amounts of iterations to be tested
             samples:      Array containing all integer amounts of samples to be tested
             trueValParms: Iterations and Samples parameters to estimate the true value from, is ignored if the true area is given
-            trueArea:     TrueArea to estimate standard error from, is ignored if None.
-        
-        Returns: A tuple containing an array of the standard errors w.r.t. the "estimated true value",
+            trueArea:     TrueArea to estimate population STD from, is ignored if None.
+            parallel:     Wether or not to use the paralellized implementation when this would lead to guaranteed 
+                          performance increase
+            
+        Returns: A tuple containing an array of the population std w.r.t. the "estimated true value",
             an array of the areas for all runs, and the  "estimated true value".
             
             Along rows, amount of samples remain constant with varying iterations
@@ -165,12 +179,15 @@ class PureRandomSampling(BaseSolver):
     Implementation of the Monte Carlo integration scheme for the Mandelbrot utilizing pure random sampling
     """
     def instantiateRNG(self, seed: int) -> None:
+        """See BaseSolver"""
         self.RNG = np.random.default_rng(seed)
     
     def get_state(self) -> int:
+        """See BaseSolver"""
         return self.RNG.bit_generator.state["state"]["state"]
     
     def samples(self, nSamples: int) -> ndarray[float, float]:
+        """See BaseSolver"""
         return self.RNG.uniform((self.XMIN, self.YMIN), (self.XMAX, self.YMAX), (nSamples, 2))
 
 
@@ -179,12 +196,19 @@ class LatinHypercubeSampling(BaseSolver):
     Implementation of the Monte Carlo integration scheme for the Mandelbrot utilizing pure random sampling
     """
     def instantiateRNG(self, seed: int) -> None:
+        """See BaseSolver"""
         self.RNG = LatinHypercube(2, strength=1, seed=seed)
 
     def get_state(self) -> int:
+        """See BaseSolver"""
         return self.RNG.rng.bit_generator.state["state"]["state"]
     
     def samples(self, nSamples: int) -> ndarray[float, float]:
+        """
+        See BaseSolver
+        
+        Returns samples such that they are distributed along the specified domain
+        """
         xDiff = self.XMAX - self.XMIN
         yDiff = self.YMAX - self.YMIN
         samples = self.RNG.random(nSamples)
@@ -201,4 +225,5 @@ class OrthogonalSampling(LatinHypercubeSampling):
     As orthognonal sampling is used, nSamples = p**2 must be used, where p is a prime number and p >= 3
     """
     def instantiateRNG(self, seed: int) -> None:
+        """See BaseSolver"""
         self.RNG = LatinHypercube(2, strength=2, seed=seed)
