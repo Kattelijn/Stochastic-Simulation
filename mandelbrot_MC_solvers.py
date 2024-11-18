@@ -124,7 +124,7 @@ class BaseSolver:
     def iterSample_std(self, runs: int, iters: np.ndarray[int], samples: np.ndarray[int], trueValParms = (10000, 10000),
                        trueArea: float=None, multiplier=1, verbose=False, parallel = False) -> Tuple[ndarray[float, float], ndarray[float, float], float]:
         """
-        Calculates the sample standard deviations for estimated area for different mandelbrot iteration depths 
+        Calculates the pupulation standard deviations for estimated area for different mandelbrot iteration depths 
         and sampling points taken.
 
         Args:
